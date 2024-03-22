@@ -1,0 +1,5 @@
+/.idea/
+/logs/
+/db/
+/composer.lock
+/vendor

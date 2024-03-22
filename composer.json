@@ -1,0 +1,21 @@
+{
+    "name": "phpawcom/thawani_laravel",
+    "description": "Add Thawani payment to Laravel project",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "S4D\\Laravel\\Thawani\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Abdulaziz Al Rashdi",
+            "email": "me@alrashdi.co"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {
+        "phpawcom/thawani-php-class": "dev-master"
+    }
+}
