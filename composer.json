@@ -16,6 +16,6 @@
     ],
     "minimum-stability": "dev",
     "require": {
-        "phpawcom/thawani-php-class": "dev-master"
+        "phpawcom/thawani-php-class": "2.*"
     }
 }
