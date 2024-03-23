@@ -2,7 +2,10 @@
 
 namespace S4D\Laravel\Thawani\Services;
 
+use Carbon\Carbon;
+use PHPUnit\Event\Code\Throwable;
 use S4D\Laravel\Thawani\Models\ThawaniLog;
+use function PHPUnit\Framework\throwException;
 
 /**
  * Class ThawaniService
@@ -21,6 +24,12 @@ class ThawaniService {
     public $responseData = [];
     public $headerResponses;
     private false|\CurlHandle $connection;
+    private array $paymentDetails;
+    private string $success_url;
+    private string $cancel_url;
+    private array $products;
+    private array $metadata;
+    private string $clientReference;
 
     /**
      * Sets up the Thawani API client object.
@@ -139,6 +148,37 @@ class ThawaniService {
         }
         return $input;
     }
+    public function setReturnUrls(?string $success, ?string $cancel = ''){
+        $this->success_url = $success;
+        $this->cancel_url = $cancel;
+        return $this;
+    }
+    public function setClientReference(string $reference){
+        $this->clientReference = $reference;
+        return $this;
+    }
+    public function setProducts(array $products){
+        $this->products = $products;
+        return $this;
+    }
+    public function setMetadata(array $meta){
+        $this->metadata = $meta;
+        return $this;
+    }
+    public function getPaymentUrl(){
+        return $this->paymentUrl($this->clientReference, $this->products, $this->metadata);
+    }
+    public function redirectToPayment(): \Illuminate\Http\RedirectResponse {
+        return \Redirect::to($this->getPaymentUrl())->send();
+    }
+
+    public function cancelPayment($session_id): void{
+        try {
+            $PL = ThawaniLog::where('laravel_session_id', $session_id)->latest()->first();
+            $PL->canceled_at = Carbon::now();
+            $PL->save();
+        } catch (\Exception $e) {}
+    }
 
     /**
      * Generates a Thawani payment URL with the provided parameters.
@@ -148,18 +188,20 @@ class ThawaniService {
      * @param array $metadata Additional metadata to be included with the payment.
      *
      * @return string The generated payment URL.
+     * @throws \Exception
      */
     public function paymentUrl(string|int $referenceId, array $products, array $metadata): string {
         $randomDigits = rand(1000, 9999); ## generating random 4 digits prefix to make sure there will be no duplicate ID error
+        $urlParameters = ['session_id' => \Session::getId()??''];
         $payment = $this->generatePaymentUrl([
-            'client_reference_id' => $randomDigits.$referenceId,
+            'client_reference_id' => $randomDigits . $referenceId,
             'products' => $products,
-            'success_url' => route('thawani.check-payment', ['session_id' => \Session::getId()??'']),
-            'cancel_url' => route('thawani.cancel-payment', ['session_id' => \Session::getId()??'']),
+            'success_url' => !empty($this->success_url ?? '') ? url($this->success_url, $urlParameters) : route('thawani.check-payment', $urlParameters),
+            'cancel_url' => !empty($this->cancel_url ?? '') ? url($this->cancel_url, $urlParameters) : route('thawani.cancel-payment', $urlParameters),
             'metadata' => $metadata,
-            'ip' => \Request::ip()??'',
+            'ip' => \Request::ip() ?? '',
         ]);
-        if(!empty($payment??'')) {
+        if (!empty($payment ?? '')) {
             $log = new ThawaniLog();
             $log->user_id = \Auth::id() ?? 0;
             $log->laravel_session_id = \Session::getId() ?? '';
@@ -168,6 +210,8 @@ class ThawaniService {
             $log->metadata = [...$metadata, ...['generated_reference_id' => $randomDigits . $referenceId]];
             $log->client_reference = $referenceId;
             $log->save();
+        }else{
+            throw new \Exception('Unable to get payment url, thawani response: '.PHP_EOL.print_r($this->responseData, true));
         }
         return $payment;
     }
@@ -179,9 +223,27 @@ class ThawaniService {
      * @return bool Returns true if the payment status is successful, false otherwise.
      */
     public function paymentStatus(string $session_id): bool{
-        $this->checkPaymentStatus($session_id);
+        $this->paymentDetails = $this->checkPaymentStatus($session_id);
+        if($this->payment_status == 1){
+            ThawaniLog::where('thawani_session_id', $session_id)->update(['payment_id' => $this->paymentDetails['invoice']??'']);
+        }
         return $this->payment_status == 1;
     }
+
+    /**
+     * Returns the details of the payment.
+     *
+     * @return array The payment details.
+     */
+    public function paymentDetails(): array{
+        return $this->paymentDetails;
+    }
+
+    /**
+     * Retrieves the session ID associated with the Thawani API client object.
+     *
+     * @return string The session ID.
+     */
     public function getSessionId(){
         return $this->payment_id;
     }

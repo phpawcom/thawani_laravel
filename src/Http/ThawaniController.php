@@ -3,6 +3,7 @@
 namespace S4D\Laravel\Thawani\Http;
 
 use App\Http\Controllers\Controller;
+use Carbon\Carbon;
 use S4D\Laravel\Thawani\Models\ThawaniLog;
 use S4D\Laravel\Thawani\Thawani;
 
@@ -14,11 +15,13 @@ class ThawaniController extends Controller {
         if(!$PL){
             abort(403);
         }
-        if(Thawani::paymentStatus($PL->thawani_session_id)){
-            echo 'okay payment';
-        }else{
-            echo 'failed payment';
-        }
+        $isSuccessful = Thawani::paymentStatus($PL->thawani_session_id);
+        return view('ThawaniLaravel::result', compact('isSuccessful'));
+    }
+    public function cancelPayment($session_id){
+        Thawani::cancelPayment($session_id);
+        return view('ThawaniLaravel::canceled');
+
     }
     public function webhook(){}
 }

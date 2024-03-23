@@ -12,4 +12,8 @@ return [
         'secret_key' => '',
         'webhook_secret' => '',
     ],
+    'views' => [
+        'layout' => '',
+        'section' => 'content'
+    ],
 ];
