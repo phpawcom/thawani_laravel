@@ -3,6 +3,7 @@
 namespace S4D\Laravel\Thawani;
 
 use Illuminate\Support\ServiceProvider;
+use S4D\Laravel\Thawani\Services\ThawaniService;
 
 class ThawaniServiceProvider extends ServiceProvider {
     public function boot(){
@@ -16,6 +17,7 @@ class ThawaniServiceProvider extends ServiceProvider {
     }
 
     public function register(){
+        $this->app->bind('Thawani', fn() => new ThawaniService());
     }
 
 }
