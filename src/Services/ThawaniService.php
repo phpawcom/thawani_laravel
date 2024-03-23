@@ -2,6 +2,8 @@
 
 namespace S4D\Laravel\Thawani\Services;
 
+use S4D\Laravel\Thawani\Models\ThawaniLog;
+
 /**
  * Class ThawaniService
  *
@@ -147,14 +149,27 @@ class ThawaniService {
      *
      * @return string The generated payment URL.
      */
-    public function paymentUrl(string|int $referenceId, array $products, array $metadata){
-        return $this->generatePaymentUrl([
-            'client_reference_id' => rand(1000, 9999).$referenceId, ## generating random 4 digits prefix to make sure there will be no duplicate ID error
+    public function paymentUrl(string|int $referenceId, array $products, array $metadata): string {
+        $randomDigits = rand(1000, 9999); ## generating random 4 digits prefix to make sure there will be no duplicate ID error
+        $payment = $this->generatePaymentUrl([
+            'client_reference_id' => $randomDigits.$referenceId,
             'products' => $products,
-            'success_url' => route('thawani.check-payment'),
-            'cancel_url' => route('thawani.cancel-payment'),
-            'metadata' => $metadata
+            'success_url' => route('thawani.check-payment', ['session_id' => \Session::getId()??'']),
+            'cancel_url' => route('thawani.cancel-payment', ['session_id' => \Session::getId()??'']),
+            'metadata' => $metadata,
+            'ip' => \Request::ip()??'',
         ]);
+        if(!empty($payment??'')) {
+            $log = new ThawaniLog();
+            $log->user_id = \Auth::id() ?? 0;
+            $log->laravel_session_id = \Session::getId() ?? '';
+            $log->thawani_session_id = $this->payment_id;
+            $log->products = $products;
+            $log->metadata = [...$metadata, ...['generated_reference_id' => $randomDigits . $referenceId]];
+            $log->client_reference = $referenceId;
+            $log->save();
+        }
+        return $payment;
     }
 
     /**
@@ -166,6 +181,9 @@ class ThawaniService {
     public function paymentStatus(string $session_id): bool{
         $this->checkPaymentStatus($session_id);
         return $this->payment_status == 1;
+    }
+    public function getSessionId(){
+        return $this->payment_id;
     }
     /**
      * @param array $input
