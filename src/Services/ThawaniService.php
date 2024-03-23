@@ -196,8 +196,8 @@ class ThawaniService {
         $payment = $this->generatePaymentUrl([
             'client_reference_id' => $randomDigits . $referenceId,
             'products' => $products,
-            'success_url' => !empty($this->success_url ?? '') ? url($this->success_url, $urlParameters) : route('thawani.check-payment', $urlParameters),
-            'cancel_url' => !empty($this->cancel_url ?? '') ? url($this->cancel_url, $urlParameters) : route('thawani.cancel-payment', $urlParameters),
+            'success_url' => !empty($this->success_url ?? '') ? route($this->success_url, $urlParameters) : route('thawani.check-payment', $urlParameters),
+            'cancel_url' => !empty($this->cancel_url ?? '') ? route($this->cancel_url, $urlParameters) : route('thawani.cancel-payment', $urlParameters),
             'metadata' => $metadata,
             'ip' => \Request::ip() ?? '',
         ]);
@@ -223,11 +223,17 @@ class ThawaniService {
      * @return bool Returns true if the payment status is successful, false otherwise.
      */
     public function paymentStatus(string $session_id): bool{
-        $this->paymentDetails = $this->checkPaymentStatus($session_id);
-        if($this->payment_status == 1){
-            ThawaniLog::where('thawani_session_id', $session_id)->update(['payment_id' => $this->paymentDetails['invoice']??'']);
-        }
-        return $this->payment_status == 1;
+        $status = 0;
+        try {
+            $TL = ThawaniLog::where('laravel_session_id', $session_id)->latest()->first();
+            $this->paymentDetails = $this->checkPaymentStatus($TL->thawani_session_id);
+            if ($this->payment_status == 1) {
+                $TL->payment_id = $this->paymentDetails['invoice'] ?? '';
+                $TL->save();
+                $status = true;
+            }
+        } catch (\Exception $e) {}
+        return $status;
     }
 
     /**

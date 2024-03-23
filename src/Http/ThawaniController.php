@@ -8,8 +8,6 @@ use S4D\Laravel\Thawani\Models\ThawaniLog;
 use S4D\Laravel\Thawani\Thawani;
 
 class ThawaniController extends Controller {
-    public function index(){}
-    public function generatePaymentUrl(){}
     public function paymentCheck($session_id){
         $PL = ThawaniLog::where('laravel_session_id', $session_id)->latest()->first();
         if(!$PL){
