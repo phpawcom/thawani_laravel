@@ -3,7 +3,7 @@
     "description": "Add Thawani payment to Laravel project",
     "type": "library",
     "license": "MIT",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "autoload": {
         "psr-4": {
             "S4D\\Laravel\\Thawani\\": "src/"
@@ -31,6 +31,6 @@
         "ext-curl": "*"
     },
     "require-dev": {
-        "orchestra/testbench": "8.x-dev"
+        "orchestra/testbench": "^8.23.4"
     }
 }
